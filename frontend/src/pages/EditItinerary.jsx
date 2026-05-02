@@ -23,6 +23,7 @@ export default function EditItinerary() {
     startDate: existing?.startDate ?? todayStr(),
     currency: existing?.currency ?? 'IDR',
     image: existing?.image ?? null,
+    isPublic: existing?.isPublic ?? false,
   })
   const [saving, setSaving] = useState(false)
 
@@ -34,6 +35,7 @@ export default function EditItinerary() {
       startDate: existing.startDate ?? todayStr(),
       currency: existing.currency ?? 'IDR',
       image: existing.image ?? null,
+      isPublic: existing.isPublic ?? false,
     })
   }, [existing])
 
@@ -59,6 +61,7 @@ export default function EditItinerary() {
       startDate: form.startDate || todayStr(),
       currency: form.currency,
       image: form.image,
+      isPublic: form.isPublic,
     }
     setSaving(true)
     try {
@@ -176,6 +179,25 @@ export default function EditItinerary() {
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
+            </div>
+
+            <div className="form-field">
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={form.isPublic}
+                  onChange={(e) => set('isPublic', e.target.checked)}
+                  className="toggle-checkbox"
+                />
+                <span className="toggle-label">
+                  <strong>Make this itinerary public</strong>
+                  <span className="toggle-hint">
+                    {form.isPublic
+                      ? 'Anyone with the link can view this itinerary'
+                      : 'Only you can view this itinerary'}
+                  </span>
+                </span>
+              </label>
             </div>
 
             <div className="form-btn-row">

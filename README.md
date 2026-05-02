@@ -54,15 +54,34 @@ In `frontend/.env`:
 VITE_API_BASE_URL=http://localhost:8080
 ```
 
+### 4. (Optional) Configure the site URL for sitemap
+
+Set `SITE_URL` in the API environment to your production domain so the generated sitemap uses the correct URLs:
+
+```bash
+SITE_URL=https://yourdomain.com go run .
+```
+
 ## Features
 
-- Create and edit itineraries
+- User registration and login (session-based auth)
+- Public and private itineraries — toggle per itinerary from the Edit page
+- Shareable itinerary links — readable without login
+- Create, edit, and delete itineraries
 - Add, edit, delete, and reorder activities
 - Group activities by day
 - Auto-derived itinerary end date from activities
 - Cost tracking per itinerary
 - Interactive maps for activity locations
 - LocalStorage import into SQLite
+- SEO-friendly meta tags and OpenGraph tags on itinerary detail pages
+- Auto-generated `sitemap.xml` at `/sitemap.xml` listing all public itineraries
+
+## Authentication
+
+Accounts are managed via `/api/auth/register` and `/api/auth/login`. Sessions are stored server-side in SQLite and validated via a Bearer token in the `Authorization` header. Tokens expire after 30 days.
+
+A default demo account is created on first run using the `DEFAULT_USER_EMAIL` and `DEFAULT_USER_PASSWORD` environment variables (defaults: `demo@reitinerary.local` / `demo-password`).
 
 ## Existing Docs
 

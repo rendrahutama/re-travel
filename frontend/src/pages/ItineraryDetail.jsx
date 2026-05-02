@@ -1,11 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import Header from '../components/Header'
 import { DatetimeInput } from '../components/DateInput'
 import LocationInput from '../components/LocationInput'
 import TripMap from '../components/TripMap'
 import { useItinerary } from '../context/ItineraryContext'
+import { useAuth } from '../context/AuthContext'
+import { usePageMeta } from '../hooks/usePageMeta'
 import { ACTIVITY_TYPES, formatActivityTypeLabel } from '../data/activityTypes'
+
 const TICKET_STATUSES = ['Secured', 'Unbooked', 'Go Show']
 
 /* ─── SVG Icons ─── */
@@ -83,6 +86,16 @@ function formatEstimate(amount, currency) {
   return currency === 'IDR'
     ? `IDR ${Number(amount).toLocaleString('id-ID')}`
     : `${currency} ${Number(amount).toLocaleString()}`
+}
+
+function formatTripLength(startDate, endDate) {
+  if (!startDate || !endDate) return ''
+  const days = Math.max(
+    1,
+    Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1
+  )
+  const nights = Math.max(0, days - 1)
+  return `${days}D ${nights}N`
 }
 
 function statusClass(status) {
@@ -248,15 +261,38 @@ function ActivityForm({ currency, itinerary, existing, onSave, onCancel, onDelet
 /* ─── Main Page ─── */
 export default function ItineraryDetail() {
   const { id } = useParams()
-  const { getItinerary, addActivity, updateActivity, deleteActivity, moveActivity, loading, error } = useItinerary()
+  const { getItinerary, refreshItinerary, addActivity, updateActivity, deleteActivity, moveActivity, loading } = useItinerary()
+  const { user } = useAuth()
 
   const [editingId, setEditingId] = useState(null)
   const [addingActivity, setAddingActivity] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [fetching, setFetching] = useState(false)
+  const [fetchFailed, setFetchFailed] = useState(false)
 
   const itinerary = getItinerary(id)
 
-  if (loading && !itinerary) {
+  // Fetch directly if not in cache (shared link / unauthenticated access)
+  useEffect(() => {
+    if (!itinerary && !fetching && !fetchFailed && !loading) {
+      setFetching(true)
+      refreshItinerary(id)
+        .catch(() => setFetchFailed(true))
+        .finally(() => setFetching(false))
+    }
+  }, [id, itinerary, loading])
+
+  const isOwner = !!(user && itinerary && String(itinerary.ownerId) === String(user.id))
+
+  usePageMeta({
+    title: itinerary?.name,
+    description: itinerary?.description
+      || (itinerary ? `View the ${itinerary.name} travel itinerary` : undefined),
+    image: itinerary?.image ?? undefined,
+    type: 'article',
+  })
+
+  if (loading || fetching) {
     return (
       <>
         <Header right={<Link to="/" className="header-link">My Itinerary List</Link>} />
@@ -267,7 +303,7 @@ export default function ItineraryDetail() {
     )
   }
 
-  if (!itinerary) {
+  if (!itinerary || fetchFailed) {
     return (
       <>
         <Header right={<Link to="/" className="header-link">My Itinerary List</Link>} />
@@ -351,12 +387,6 @@ export default function ItineraryDetail() {
       <Header right={<Link to="/" className="header-link">My Itinerary List</Link>} />
 
       <div className="page-wide">
-        {error && (
-          <div style={{ textAlign: 'center', color: 'var(--red-icon)', marginBottom: 24 }}>
-            Failed to sync itinerary: {error}
-          </div>
-        )}
-
         {/* Trip header: info card (60%) + map (40%) */}
         <div className="trip-header-row">
           <div
@@ -370,9 +400,11 @@ export default function ItineraryDetail() {
             {itinerary.image && <div className="trip-card-overlay" />}
             <div className="trip-info-content">
               <div className="trip-info-actions">
-                <Link to={`/itinerary/${id}/edit`} className="icon-btn" title="Edit itinerary">
-                  <PencilIcon />
-                </Link>
+                {isOwner && (
+                  <Link to={`/itinerary/${id}/edit`} className="icon-btn" title="Edit itinerary">
+                    <PencilIcon />
+                  </Link>
+                )}
                 <button className="icon-btn" onClick={handleShare} title="Share">
                   <ShareIcon />
                 </button>
@@ -382,9 +414,27 @@ export default function ItineraryDetail() {
                 <p className="trip-description">{itinerary.description}</p>
               )}
               <div className="trip-meta">
-                <div>Planned for {formatDate(itinerary.startDate)}</div>
+                <div className="trip-meta-item">
+                  <span className="trip-meta-label">Planned Date</span>
+                  <span className="trip-meta-value">{formatDate(itinerary.startDate)}</span>
+                </div>
+                <div className="trip-meta-item">
+                  <span className="trip-meta-label">Trip Length</span>
+                  <span className="trip-meta-value">
+                    {formatTripLength(itinerary.startDate, itinerary.endDate)}
+                  </span>
+                </div>
                 {totalCost > 0 && (
-                  <div>Estimate cost: {formatEstimate(totalCost, currency)}</div>
+                  <div className="trip-meta-item trip-meta-item-cost">
+                    <span className="trip-meta-label">Estimated Cost</span>
+                    <span className="trip-meta-value">{formatEstimate(totalCost, currency)}</span>
+                  </div>
+                )}
+                {itinerary.ownerName && (
+                  <div className="trip-meta-item">
+                    <span className="trip-meta-label">Created by</span>
+                    <span className="trip-meta-value">{itinerary.ownerName}</span>
+                  </div>
                 )}
               </div>
             </div>
@@ -394,7 +444,9 @@ export default function ItineraryDetail() {
         {/* Day groups */}
         {groups.length === 0 && !addingActivity && (
           <p style={{ color: 'var(--text-gray)', textAlign: 'center', margin: '40px 0' }}>
-            No activities yet. Add your first activity below!
+            {isOwner
+              ? 'No activities yet. Add your first activity below!'
+              : 'No activities have been added to this itinerary yet.'}
           </p>
         )}
 
@@ -425,7 +477,7 @@ export default function ItineraryDetail() {
                   const isFirst = globalIdx === 0
                   const isLast = globalIdx === sortedActivities.length - 1
 
-                  if (editingId === act.id) {
+                  if (isOwner && editingId === act.id) {
                     return (
                       <div key={act.id} className="timeline-item">
                         <div className="timeline-dot" />
@@ -447,17 +499,19 @@ export default function ItineraryDetail() {
                       <p className="timeline-time">{formatTime(act.datetime)}</p>
 
                       <div className="activity-card">
-                        <div className="activity-card-actions">
-                          {!isLast && (
-                            <button className="arrow-btn" onClick={() => handleMove(act.id, 'down')} title="Move down" disabled={saving}>▼</button>
-                          )}
-                          {!isFirst && (
-                            <button className="arrow-btn" onClick={() => handleMove(act.id, 'up')} title="Move up" disabled={saving}>▲</button>
-                          )}
-                          <button className="icon-btn" onClick={() => openEdit(act.id)} title="Edit activity" disabled={saving}>
-                            <PencilIcon />
-                          </button>
-                        </div>
+                        {isOwner && (
+                          <div className="activity-card-actions">
+                            {!isLast && (
+                              <button className="arrow-btn" onClick={() => handleMove(act.id, 'down')} title="Move down" disabled={saving}>▼</button>
+                            )}
+                            {!isFirst && (
+                              <button className="arrow-btn" onClick={() => handleMove(act.id, 'up')} title="Move up" disabled={saving}>▲</button>
+                            )}
+                            <button className="icon-btn" onClick={() => openEdit(act.id)} title="Edit activity" disabled={saving}>
+                              <PencilIcon />
+                            </button>
+                          </div>
+                        )}
 
                         <p className="activity-type">
                           <span className="activity-type-badge">
@@ -512,18 +566,18 @@ export default function ItineraryDetail() {
           )
         })}
 
-        {/* Inline add form */}
-        {addingActivity && (
-            <ActivityForm
-              currency={currency}
-              itinerary={itinerary}
-              onSave={handleAddSave}
-              onCancel={() => setAddingActivity(false)}
-            />
+        {/* Inline add form (owner only) */}
+        {isOwner && addingActivity && (
+          <ActivityForm
+            currency={currency}
+            itinerary={itinerary}
+            onSave={handleAddSave}
+            onCancel={() => setAddingActivity(false)}
+          />
         )}
 
-        {/* Add Activities button */}
-        {!addingActivity && (
+        {/* Add Activities button (owner only) */}
+        {isOwner && !addingActivity && (
           <div className="add-activity-row">
             <button className="btn btn-primary" onClick={openAdd}>
               <span className="btn-icon-circle">+</span>

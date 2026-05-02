@@ -12,10 +12,16 @@ function parseResponsePayload(text) {
   }
 }
 
+function getToken() {
+  return localStorage.getItem('auth_token')
+}
+
 async function request(path, options = {}) {
+  const token = getToken()
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
     ...options,
@@ -61,6 +67,11 @@ export function ItineraryProvider({ children }) {
   useEffect(() => {
     loadItineraries()
   }, [])
+
+  const clearItineraries = () => {
+    setItineraries([])
+    setError('')
+  }
 
   const getItinerary = (id) => itineraries.find((it) => it.id === id)
 
@@ -144,7 +155,9 @@ export function ItineraryProvider({ children }) {
         error,
         apiBaseUrl: API_BASE_URL,
         reloadItineraries: loadItineraries,
+        clearItineraries,
         getItinerary,
+        refreshItinerary,
         addItinerary,
         updateItinerary,
         deleteItinerary,

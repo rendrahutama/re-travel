@@ -1,6 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import { useItinerary } from '../context/ItineraryContext'
+import { useAuth } from '../context/AuthContext'
+import { usePageMeta } from '../hooks/usePageMeta'
 
 function daysToGo(dateStr) {
   const today = new Date()
@@ -52,7 +54,13 @@ function PencilIcon() {
 
 export default function ItineraryList() {
   const { itineraries, loading, error } = useItinerary()
+  const { isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
+
+  usePageMeta({
+    title: isAuthenticated ? 'My Itineraries' : 'Explore Itineraries',
+    description: 'Plan and manage all your travel itineraries in one place with Re-Itinerary.',
+  })
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -65,16 +73,21 @@ export default function ItineraryList() {
     .filter((it) => new Date(it.startDate) < today)
     .sort((a, b) => new Date(b.startDate) - new Date(a.startDate))
 
+  const isOwner = (it) => isAuthenticated && user && String(it.ownerId) === String(user.id)
+
+  const upcomingLabel = isAuthenticated ? 'Your Itineraries Ahead' : 'Upcoming Trips'
+  const othersLabel = isAuthenticated ? 'Other Itineraries' : 'Past Trips'
+
+  const headerRight = isAuthenticated ? (
+    <Link to="/itinerary/new" className="btn-header">
+      <span className="btn-icon-circle">+</span>
+      Plan a New Itinerary
+    </Link>
+  ) : null
+
   return (
     <>
-      <Header
-        right={
-          <Link to="/itinerary/new" className="btn-header">
-            <span className="btn-icon-circle">+</span>
-            Plan a New Itinerary
-          </Link>
-        }
-      />
+      <Header right={headerRight} />
 
       <div className="page">
         {error && (
@@ -91,11 +104,12 @@ export default function ItineraryList() {
 
         {upcoming.length > 0 && (
           <>
-            <p className="section-title">Your Itineraries Ahead</p>
+            <p className="section-title">{upcomingLabel}</p>
             <div className="upcoming-grid">
               {upcoming.map((it) => {
                 const days = daysToGo(it.startDate)
                 const cost = computeCost(it)
+                const canEdit = isOwner(it)
                 return (
                   <div
                     key={it.id}
@@ -103,17 +117,18 @@ export default function ItineraryList() {
                     style={cardBgStyle(it)}
                     onClick={() => navigate(`/itinerary/${it.id}`)}
                   >
-                    <button
-                      className="icon-btn upcoming-card-edit"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        navigate(`/itinerary/${it.id}/edit`)
-                      }}
-                      title="Edit itinerary"
-                    >
-                      <PencilIcon />
-                    </button>
-
+                    {canEdit && (
+                      <button
+                        className="icon-btn upcoming-card-edit"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate(`/itinerary/${it.id}/edit`)
+                        }}
+                        title="Edit itinerary"
+                      >
+                        <PencilIcon />
+                      </button>
+                    )}
                     <div className="upcoming-card-body">
                       <p className="upcoming-card-days">
                         {days > 0
@@ -141,38 +156,59 @@ export default function ItineraryList() {
 
         {others.length > 0 && (
           <>
-            <p className="section-title">Other Itineraries</p>
+            <p className="section-title">{othersLabel}</p>
             <div className="other-list">
-              {others.map((it) => (
-                <div
-                  key={it.id}
-                  className="other-list-item"
-                  onClick={() => navigate(`/itinerary/${it.id}`)}
-                >
-                  <span className="other-list-item-name">{it.name}</span>
-                  <button
-                    className="icon-btn"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      navigate(`/itinerary/${it.id}/edit`)
-                    }}
-                    title="Edit itinerary"
+              {others.map((it) => {
+                const canEdit = isOwner(it)
+                return (
+                  <div
+                    key={it.id}
+                    className="other-list-item"
+                    onClick={() => navigate(`/itinerary/${it.id}`)}
                   >
-                    <PencilIcon />
-                  </button>
-                </div>
-              ))}
+                    <span className="other-list-item-name">{it.name}</span>
+                    {canEdit && (
+                      <button
+                        className="icon-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate(`/itinerary/${it.id}/edit`)
+                        }}
+                        title="Edit itinerary"
+                      >
+                        <PencilIcon />
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </>
         )}
 
+        {!isAuthenticated && !loading && itineraries.length > 0 && (
+          <div className="public-banner">
+            <span>Browsing public itineraries.</span>
+            <Link to="/login" className="auth-link"> Log in</Link> to manage your own.
+          </div>
+        )}
+
         {!loading && itineraries.length === 0 && (
           <div style={{ textAlign: 'center', color: 'var(--text-gray)', marginTop: 80 }}>
-            <p style={{ fontSize: 16, marginBottom: 12 }}>No itineraries yet.</p>
-            <Link to="/itinerary/new" className="btn btn-primary">
-              <span className="btn-icon-circle">+</span>
-              Plan a New Itinerary
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <p style={{ fontSize: 16, marginBottom: 12 }}>No itineraries yet.</p>
+                <Link to="/itinerary/new" className="btn btn-primary">
+                  <span className="btn-icon-circle">+</span>
+                  Plan a New Itinerary
+                </Link>
+              </>
+            ) : (
+              <>
+                <p style={{ fontSize: 16, marginBottom: 12 }}>No public itineraries yet.</p>
+                <Link to="/login" className="btn btn-primary">Sign in to create one</Link>
+              </>
+            )}
           </div>
         )}
       </div>
