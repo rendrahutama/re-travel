@@ -73,7 +73,7 @@ export function ItineraryProvider({ children }) {
     setError('')
   }
 
-  const getItinerary = (id) => itineraries.find((it) => it.id === id)
+  const getItinerary = (idOrSlug) => itineraries.find((it) => it.slug === idOrSlug || it.id === idOrSlug)
 
   const refreshItinerary = async (id) => {
     const item = await request(`/api/itineraries/${id}`)
@@ -88,7 +88,7 @@ export function ItineraryProvider({ children }) {
     })
     setItineraries((prev) => [...prev, item])
     setError('')
-    return item.id
+    return item.slug
   }
 
   const updateItinerary = async (id, updates) => {

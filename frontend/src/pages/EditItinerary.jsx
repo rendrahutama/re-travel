@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import { DateInput } from '../components/DateInput'
 import { useItinerary } from '../context/ItineraryContext'
@@ -95,7 +95,7 @@ export default function EditItinerary() {
   if (!isNew && loading && !existing) {
     return (
       <>
-        <Header right={<Link to="/" className="header-link">My Itinerary List</Link>} />
+        <Header />
         <div className="page" style={{ textAlign: 'center', marginTop: 60 }}>
           <p>Loading itinerary...</p>
         </div>
@@ -106,7 +106,7 @@ export default function EditItinerary() {
   if (!isNew && !existing) {
     return (
       <>
-        <Header right={<Link to="/" className="header-link">My Itinerary List</Link>} />
+        <Header />
         <div className="page" style={{ textAlign: 'center', marginTop: 60 }}>
           <p>Itinerary not found.</p>
         </div>
@@ -116,7 +116,7 @@ export default function EditItinerary() {
 
   return (
     <>
-      <Header right={<Link to="/" className="header-link">My Itinerary List</Link>} />
+      <Header />
 
       <div className="page-wide">
         {error && (
@@ -194,7 +194,7 @@ export default function EditItinerary() {
                   <span className="toggle-hint">
                     {form.isPublic
                       ? 'Anyone with the link can view this itinerary'
-                      : 'Only you can view this itinerary'}
+                      : 'Left unchecked so only you can view this itinerary'}
                   </span>
                 </span>
               </label>

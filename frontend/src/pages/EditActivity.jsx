@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import { DatetimeInput } from '../components/DateInput'
 import LocationInput from '../components/LocationInput'
@@ -125,7 +125,7 @@ export default function EditActivity() {
   if (loading && !itinerary) {
     return (
       <>
-        <Header right={<Link to="/" className="header-link">My Itinerary List</Link>} />
+        <Header />
         <div className="page" style={{ textAlign: 'center', marginTop: 60 }}>
           <p>Loading itinerary...</p>
         </div>
@@ -136,7 +136,7 @@ export default function EditActivity() {
   if (!itinerary) {
     return (
       <>
-        <Header right={<Link to="/" className="header-link">My Itinerary List</Link>} />
+        <Header />
         <div className="page" style={{ textAlign: 'center', marginTop: 60 }}>
           <p>Itinerary not found.</p>
         </div>
@@ -148,7 +148,7 @@ export default function EditActivity() {
 
   return (
     <>
-      <Header right={<Link to="/" className="header-link">My Itinerary List</Link>} />
+      <Header />
 
       <div className="page-wide">
         {error && (

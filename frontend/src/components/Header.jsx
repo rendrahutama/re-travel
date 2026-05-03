@@ -27,6 +27,7 @@ function UserMenu({ user, onLogout }) {
       {open && (
         <div className="user-menu-dropdown">
           <p className="user-menu-email">{user.email}</p>
+          <Link to="/" className="user-menu-nav-link">My Itinerary List</Link>
           <button className="user-menu-logout" onClick={onLogout}>Logout</button>
         </div>
       )}

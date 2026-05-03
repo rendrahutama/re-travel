@@ -34,14 +34,21 @@ var supportedActivityTypes = []string{
 	"Attraction",
 	"Beach",
 	"Bus",
+	"Car",
 	"Culinary",
+	"Culture",
+	"Cycling",
 	"Event",
 	"Explore",
 	"Ferry",
 	"Flight",
+	"Hiking",
+	"Motorscooter",
 	"Nature",
 	"Other",
 	"Shopping",
+	"Spa",
+	"Sport",
 	"Stay",
 	"Taxi",
 	"Train",
@@ -68,6 +75,7 @@ type itinerary struct {
 	ID            string     `json:"id"`
 	OwnerID       int64      `json:"ownerId"`
 	OwnerName     string     `json:"ownerName"`
+	Slug          string     `json:"slug"`
 	Name          string     `json:"name"`
 	Description   string     `json:"description"`
 	StartDate     string     `json:"startDate"`
@@ -237,8 +245,16 @@ func (a *app) bootstrap() error {
 		return fmt.Errorf("migrate activity schema: %w", err)
 	}
 
+	if err := a.migrateActivityTypesExpanded(); err != nil {
+		return fmt.Errorf("migrate activity types expanded: %w", err)
+	}
+
 	if err := a.migrateItinerariesIsPublic(); err != nil {
 		return fmt.Errorf("migrate itineraries is_public: %w", err)
+	}
+
+	if err := a.migrateItinerariesSlug(); err != nil {
+		return fmt.Errorf("migrate itineraries slug: %w", err)
 	}
 
 	defaultPass := envOr("DEFAULT_USER_PASSWORD", defaultUserPass)
@@ -508,7 +524,7 @@ func (a *app) handleSitemap(w http.ResponseWriter, r *http.Request) {
 			lastMod = it.CreatedAt[:10]
 		}
 		urls = append(urls, sitemapURLEntry{
-			Loc:        fmt.Sprintf("%s/itinerary/%s", siteURL, it.ID),
+			Loc:        fmt.Sprintf("%s/itinerary/%s", siteURL, it.Slug),
 			LastMod:    lastMod,
 			ChangeFreq: "weekly",
 			Priority:   "0.8",
@@ -605,9 +621,9 @@ func (a *app) handleItineraryRoutes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	parts := strings.Split(path, "/")
-	itineraryID, err := strconv.ParseInt(parts[0], 10, 64)
+	itineraryID, err := a.resolveItineraryID(r.Context(), parts[0])
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid itinerary id"})
+		writeRepoError(w, err)
 		return
 	}
 
@@ -867,7 +883,8 @@ func (a *app) getItinerary(ctx context.Context, itineraryID int64) (itinerary, e
 		       COALESCE(i.currency, 'IDR'),
 		       COALESCE((SELECT SUM(a.cost) FROM activities a WHERE a.itinerary_id = i.id), 0),
 		       cover_image_url, created_at, COALESCE(i.is_public, 0),
-		       (SELECT COALESCE(name, 'Unknown') FROM users WHERE id = i.user_id)
+		       (SELECT COALESCE(name, 'Unknown') FROM users WHERE id = i.user_id),
+		       COALESCE(i.slug, '')
 		FROM itineraries i
 		WHERE i.id = ?
 	`, itineraryID).Scan(
@@ -883,6 +900,7 @@ func (a *app) getItinerary(ctx context.Context, itineraryID int64) (itinerary, e
 		&item.CreatedAt,
 		&isPublic,
 		&item.OwnerName,
+		&item.Slug,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -914,11 +932,16 @@ func (a *app) createItinerary(ctx context.Context, userID int64, payload itinera
 
 	isPublic := payload.IsPublic != nil && *payload.IsPublic
 
+	slug, err := a.generateUniqueSlug(ctx, toSlug(payload.Name))
+	if err != nil {
+		return itinerary{}, err
+	}
+
 	res, err := a.db.ExecContext(ctx, `
 		INSERT INTO itineraries (
-			user_id, name, description, start_date, end_date, currency, cover_image_url, estimated_cost, is_public
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, userID, payload.Name, payload.Description, payload.StartDate, payload.StartDate, payload.Currency, nullableString(payload.Image), 0, boolToInt(isPublic))
+			user_id, name, description, start_date, end_date, currency, cover_image_url, estimated_cost, is_public, slug
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, userID, payload.Name, payload.Description, payload.StartDate, payload.StartDate, payload.Currency, nullableString(payload.Image), 0, boolToInt(isPublic), slug)
 	if err != nil {
 		return itinerary{}, err
 	}
@@ -1250,6 +1273,7 @@ func (a *app) importLocalStorageData(ctx context.Context, req importRequest) (im
 	}
 
 	importedIDs := make([]int64, 0, len(req.Itineraries))
+	batchSlugs := make(map[string]bool)
 	for _, source := range req.Itineraries {
 		payload := normalizeItineraryPayload(itineraryPayload{
 			Name:          source.Name,
@@ -1265,12 +1289,32 @@ func (a *app) importLocalStorageData(ctx context.Context, req importRequest) (im
 		}
 
 		createdAt := normalizeCreatedAt(source.CreatedAt)
+
+		base := toSlug(payload.Name)
+		importSlug := base
+		if importSlug == "" {
+			importSlug = "itinerary"
+		}
+		for suffix := 2; ; suffix++ {
+			if !batchSlugs[importSlug] {
+				var count int
+				if err := a.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM itineraries WHERE slug = ?`, importSlug).Scan(&count); err != nil {
+					return importResult{}, err
+				}
+				if count == 0 {
+					break
+				}
+			}
+			importSlug = fmt.Sprintf("%s-%d", base, suffix)
+		}
+		batchSlugs[importSlug] = true
+
 		res, err := tx.ExecContext(ctx, `
 			INSERT INTO itineraries (
 				user_id, name, description, start_date, end_date, currency,
-				cover_image_url, estimated_cost, is_public, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-		`, userID, payload.Name, payload.Description, payload.StartDate, payload.EndDate, payload.Currency, nullableString(payload.Image), valueOrZero(payload.EstimatedCost), createdAt, createdAt)
+				cover_image_url, estimated_cost, is_public, slug, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+		`, userID, payload.Name, payload.Description, payload.StartDate, payload.EndDate, payload.Currency, nullableString(payload.Image), valueOrZero(payload.EstimatedCost), importSlug, createdAt, createdAt)
 		if err != nil {
 			return importResult{}, err
 		}
@@ -1766,6 +1810,53 @@ func envOr(key, fallback string) string {
 	return fallback
 }
 
+// ── Slug helpers ─────────────────────────────────────────────────────────────
+
+func toSlug(name string) string {
+	s := strings.ToLower(strings.TrimSpace(name))
+	var b strings.Builder
+	prevHyphen := true
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+			prevHyphen = false
+		} else if !prevHyphen {
+			b.WriteRune('-')
+			prevHyphen = true
+		}
+	}
+	return strings.TrimRight(b.String(), "-")
+}
+
+func (a *app) generateUniqueSlug(ctx context.Context, base string) (string, error) {
+	if base == "" {
+		base = "itinerary"
+	}
+	slug := base
+	for i := 2; ; i++ {
+		var count int
+		if err := a.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM itineraries WHERE slug = ?`, slug).Scan(&count); err != nil {
+			return "", err
+		}
+		if count == 0 {
+			return slug, nil
+		}
+		slug = fmt.Sprintf("%s-%d", base, i)
+	}
+}
+
+func (a *app) resolveItineraryID(ctx context.Context, segment string) (int64, error) {
+	if id, err := strconv.ParseInt(segment, 10, 64); err == nil {
+		return id, nil
+	}
+	var id int64
+	err := a.db.QueryRowContext(ctx, `SELECT id FROM itineraries WHERE slug = ?`, segment).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, errNotFound("itinerary")
+	}
+	return id, err
+}
+
 // ── Migrations ────────────────────────────────────────────────────────────────
 
 func (a *app) migrateItinerariesIsPublic() error {
@@ -1815,6 +1906,120 @@ func (a *app) migratePasswordHashes() error {
 		}
 	}
 	return nil
+}
+
+func (a *app) migrateItinerariesSlug() error {
+	var cols string
+	if err := a.db.QueryRow(`
+		SELECT COALESCE(sql, '') FROM sqlite_master WHERE type='table' AND name='itineraries'
+	`).Scan(&cols); err != nil {
+		return err
+	}
+	if !strings.Contains(cols, "slug") {
+		if _, err := a.db.Exec(`ALTER TABLE itineraries ADD COLUMN slug TEXT`); err != nil {
+			return err
+		}
+	}
+
+	// Backfill before creating the unique index so NULLs don't conflict
+	rows, err := a.db.Query(`SELECT id, name FROM itineraries WHERE slug IS NULL OR slug = ''`)
+	if err != nil {
+		return err
+	}
+	type rowData struct {
+		id   int64
+		name string
+	}
+	var pending []rowData
+	for rows.Next() {
+		var r rowData
+		if err := rows.Scan(&r.id, &r.name); err != nil {
+			rows.Close()
+			return err
+		}
+		pending = append(pending, r)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for _, r := range pending {
+		base := toSlug(r.name)
+		if base == "" {
+			base = fmt.Sprintf("itinerary-%d", r.id)
+		}
+		slug, err := a.generateUniqueSlug(context.Background(), base)
+		if err != nil {
+			return err
+		}
+		if _, err := a.db.Exec(`UPDATE itineraries SET slug = ? WHERE id = ?`, slug, r.id); err != nil {
+			return err
+		}
+	}
+
+	if _, err := a.db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_itineraries_slug ON itineraries(slug)`); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *app) migrateActivityTypesExpanded() error {
+	var createSQL string
+	err := a.db.QueryRow(`
+		SELECT COALESCE(sql, '')
+		FROM sqlite_master
+		WHERE type = 'table' AND name = 'activities'
+	`).Scan(&createSQL)
+	if err != nil {
+		return err
+	}
+	if createSQL == "" || strings.Contains(createSQL, "'Hiking'") {
+		return nil
+	}
+
+	tx, err := a.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`DROP INDEX IF EXISTS idx_activities_itinerary_id`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DROP INDEX IF EXISTS idx_activities_date`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`ALTER TABLE activities RENAME TO activities_legacy`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(activityTableSQL); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`
+		INSERT INTO activities (
+			id, itinerary_id, activity_type, identifier, name, location_name,
+			location_address, latitude, longitude, activity_date, start_time,
+			cost, ticket_status, details, sort_order, created_at, updated_at
+		)
+		SELECT
+			id, itinerary_id, activity_type, identifier, name, location_name,
+			location_address, latitude, longitude, activity_date, start_time,
+			cost, ticket_status, details, sort_order, created_at, updated_at
+		FROM activities_legacy
+	`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DROP TABLE activities_legacy`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_activities_itinerary_id ON activities(itinerary_id)`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_activities_date ON activities(itinerary_id, activity_date, start_time)`); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (a *app) migrateActivityTypesSchema() error {
@@ -1902,6 +2107,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS itineraries (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id         INTEGER NOT NULL,
+    slug            TEXT UNIQUE,
     name            TEXT NOT NULL,
     description     TEXT,
     start_date      DATE NOT NULL,
@@ -1928,10 +2134,10 @@ CREATE TABLE IF NOT EXISTS activities (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     itinerary_id     INTEGER NOT NULL,
     activity_type    TEXT NOT NULL CHECK(activity_type IN (
-                         'Attraction','Beach','Bus','Culinary',
-                         'Event','Explore','Ferry','Flight',
-                         'Nature','Other','Shopping','Stay',
-                         'Taxi','Train'
+                         'Attraction','Beach','Bus','Car','Culinary',
+                         'Culture','Cycling','Event','Explore','Ferry',
+                         'Flight','Hiking','Motorscooter','Nature','Other',
+                         'Shopping','Spa','Sport','Stay','Taxi','Train'
                      )),
     identifier       TEXT,
     name             TEXT,

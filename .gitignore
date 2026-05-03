@@ -8,6 +8,7 @@ frontend/.env
 
 api/.env
 api/db/.env
+api/db/re_itinerary.db
 api/reitinerary-api
 
 *.log

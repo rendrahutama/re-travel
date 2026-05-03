@@ -258,6 +258,237 @@ function ActivityForm({ currency, itinerary, existing, onSave, onCancel, onDelet
   )
 }
 
+/* ─── AI Activity Import ─── */
+const VALID_TICKET = ['Secured', 'Unbooked', 'Go Show']
+
+const AI_SCHEMA_SAMPLE = JSON.stringify(
+  [
+    {
+      datetime: '2026-05-10T09:00',
+      type: 'Flight',
+      identification: 'GA-417',
+      location: {
+        name: 'Soekarno-Hatta Airport',
+        address: 'Soekarno-Hatta International Airport, Tangerang, Banten, Indonesia',
+        lat: -6.1256,
+        lng: 106.6558,
+      },
+      cost: 1500000,
+      ticketStatus: 'Secured',
+      details: 'Check in 2 hours before departure',
+    },
+  ],
+  null,
+  2
+)
+
+function buildAiPrompt(currency) {
+  return `Generate a list of trip activities in JSON format using this exact schema:
+
+${AI_SCHEMA_SAMPLE}
+
+Rules:
+- "datetime" format: YYYY-MM-DDTHH:MM
+- "type" must be one of: Attraction, Beach, Bus, Car, Culinary, Culture, Cycling, Event, Explore, Ferry, Flight, Hiking, Motorscooter, Nature, Other, Shopping, Spa, Sport, Stay, Taxi, Train
+- "ticketStatus" must be one of: "Secured", "Unbooked", "Go Show", or "" (empty string)
+- "cost" is a number in ${currency}, use 0 if free
+- "lat" and "lng" are decimal GPS coordinates (use null if unknown)
+- Return ONLY a valid JSON array, no extra text`
+}
+
+function ActivityImport({ itineraryId, currency }) {
+  const { addActivity } = useItinerary()
+  const [open, setOpen] = useState(false)
+  const [json, setJson] = useState('')
+  const [parsed, setParsed] = useState(null)
+  const [parseError, setParseError] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [progress, setProgress] = useState({ done: 0, total: 0 })
+  const [copied, setCopied] = useState(false)
+
+  const handleJsonChange = (e) => {
+    const val = e.target.value
+    setJson(val)
+    if (!val.trim()) { setParsed(null); setParseError(''); return }
+    try {
+      const data = JSON.parse(val)
+      if (!Array.isArray(data)) throw new Error('Must be a JSON array [ ... ]')
+      if (data.length === 0) throw new Error('Array is empty')
+      setParsed(data)
+      setParseError('')
+    } catch (err) {
+      setParsed(null)
+      setParseError(err.message)
+    }
+  }
+
+  const handleCopyPrompt = async () => {
+    await navigator.clipboard.writeText(buildAiPrompt(currency))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleImport = async () => {
+    if (!parsed?.length) return
+    setImporting(true)
+    setProgress({ done: 0, total: parsed.length })
+    let ok = 0
+    for (let i = 0; i < parsed.length; i++) {
+      const act = parsed[i]
+      try {
+        await addActivity(itineraryId, {
+          datetime: act.datetime || '',
+          type: ACTIVITY_TYPES.includes(act.type) ? act.type : 'Other',
+          identification: act.identification || '',
+          location: act.location && typeof act.location === 'object'
+            ? {
+                name: act.location.name || '',
+                address: act.location.address || '',
+                lat: act.location.lat ?? null,
+                lng: act.location.lng ?? null,
+              }
+            : { name: '', address: '', lat: null, lng: null },
+          cost: typeof act.cost === 'number' ? act.cost : 0,
+          ticketStatus: VALID_TICKET.includes(act.ticketStatus) ? act.ticketStatus : null,
+          details: act.details || '',
+        })
+        ok++
+      } catch {
+        // skip failed individual activity
+      }
+      setProgress({ done: i + 1, total: parsed.length })
+    }
+    setImporting(false)
+    setJson('')
+    setParsed(null)
+    setOpen(false)
+    alert(`Imported ${ok} of ${parsed.length} activities.`)
+  }
+
+  return (
+    <div className="ai-import-wrap">
+      <button
+        type="button"
+        className="ai-import-toggle"
+        onClick={() => setOpen((v) => !v)}
+      >
+        {open ? '▲ Close AI import' : '▼ Import activities from AI'}
+      </button>
+
+      {open && (
+        <div className="ai-import-panel">
+          <p className="ai-import-hint">
+            Copy the schema prompt below, paste it into ChatGPT, Claude, or any AI chatbot along with your trip details, then paste the generated JSON here.
+          </p>
+
+          <div className="ai-import-schema-row">
+            <pre className="ai-import-schema">{AI_SCHEMA_SAMPLE}</pre>
+            <button
+              type="button"
+              className="ai-import-copy-btn"
+              onClick={handleCopyPrompt}
+            >
+              {copied ? 'Copied!' : 'Copy AI prompt'}
+            </button>
+          </div>
+
+          <textarea
+            className="ai-import-textarea"
+            placeholder="Paste the AI-generated JSON array here..."
+            value={json}
+            onChange={handleJsonChange}
+            rows={8}
+            disabled={importing}
+          />
+
+          {parseError && (
+            <p className="ai-import-error">⚠ {parseError}</p>
+          )}
+
+          {parsed && !parseError && (
+            <p className="ai-import-count">
+              {parsed.length} {parsed.length === 1 ? 'activity' : 'activities'} ready to import
+            </p>
+          )}
+
+          {importing && (
+            <p className="ai-import-progress">
+              Importing {progress.done} / {progress.total}...
+            </p>
+          )}
+
+          <div className="ai-import-actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleImport}
+              disabled={!parsed || importing}
+            >
+              {importing ? 'Importing...' : `Import ${parsed?.length ?? 0} activities`}
+            </button>
+            <button
+              type="button"
+              className="btn btn-cancel"
+              onClick={() => { setOpen(false); setJson(''); setParsed(null); setParseError('') }}
+              disabled={importing}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─── Day Table of Contents ─── */
+function DayToC({ groups, startDate }) {
+  const [activeKey, setActiveKey] = useState(null)
+
+  useEffect(() => {
+    if (groups.length <= 1) return
+    const observers = groups.map(([dateKey]) => {
+      const el = document.getElementById(`day-${dateKey}`)
+      if (!el) return null
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setActiveKey(dateKey) },
+        { rootMargin: '-10% 0px -80% 0px' }
+      )
+      obs.observe(el)
+      return obs
+    }).filter(Boolean)
+    return () => observers.forEach((o) => o.disconnect())
+  }, [groups])
+
+  if (groups.length <= 1) return null
+
+  const scrollTo = (dateKey) => {
+    const el = document.getElementById(`day-${dateKey}`)
+    if (!el) return
+    const top = el.getBoundingClientRect().top + window.scrollY - 80
+    window.scrollTo({ top, behavior: 'smooth' })
+  }
+
+  return (
+    <nav className="day-toc">
+      {groups.map(([dateKey]) => {
+        const dayNum = getDayNumber(startDate, dateKey)
+        const label = dateKey === 'unscheduled' ? '–' : `Day ${dayNum}`
+        return (
+          <button
+            key={dateKey}
+            className={`day-toc-btn${activeKey === dateKey ? ' day-toc-btn-active' : ''}`}
+            onClick={() => scrollTo(dateKey)}
+            title={dateKey === 'unscheduled' ? 'Unscheduled' : `Day ${dayNum}`}
+          >
+            {label}
+          </button>
+        )
+      })}
+    </nav>
+  )
+}
+
 /* ─── Main Page ─── */
 export default function ItineraryDetail() {
   const { id } = useParams()
@@ -295,7 +526,7 @@ export default function ItineraryDetail() {
   if (loading || fetching) {
     return (
       <>
-        <Header right={<Link to="/" className="header-link">My Itinerary List</Link>} />
+        <Header />
         <div className="page" style={{ textAlign: 'center', marginTop: 60 }}>
           <p>Loading itinerary...</p>
         </div>
@@ -306,7 +537,7 @@ export default function ItineraryDetail() {
   if (!itinerary || fetchFailed) {
     return (
       <>
-        <Header right={<Link to="/" className="header-link">My Itinerary List</Link>} />
+        <Header />
         <div className="page" style={{ textAlign: 'center', marginTop: 60 }}>
           <p>Itinerary not found.</p>
           <Link to="/" className="btn btn-primary" style={{ marginTop: 16 }}>Back to List</Link>
@@ -384,8 +615,9 @@ export default function ItineraryDetail() {
 
   return (
     <>
-      <Header right={<Link to="/" className="header-link">My Itinerary List</Link>} />
+      <Header />
 
+      <DayToC groups={groups} startDate={itinerary.startDate} />
       <div className="page-wide">
         {/* Trip header: info card (60%) + map (40%) */}
         <div className="trip-header-row">
@@ -459,7 +691,7 @@ export default function ItineraryDetail() {
           const mapActivities = acts.filter((act) => act.location?.lat && act.location?.lng)
 
           return (
-            <div key={dateKey} className="day-section">
+            <div key={dateKey} id={`day-${dateKey}`} className="day-section">
               <p className="day-label">
                 {dayNum != null && <span className="day-label-num">DAY {dayNum} </span>}
                 <span>({dateLabel})</span>
@@ -531,21 +763,19 @@ export default function ItineraryDetail() {
                           </div>
                         )}
 
-                        {(act.cost > 0 || act.ticketStatus) && (
-                          <div className="activity-row">
-                            <span className="activity-icon" style={{ color: 'var(--orange)' }}>💸</span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                              {act.cost > 0 && (
-                                <span className="activity-cost">{formatCost(act.cost, currency)}</span>
-                              )}
-                              {act.ticketStatus && (
-                                <span className={`ticket-badge ${statusClass(act.ticketStatus)}`}>
-                                  {act.ticketStatus}
-                                </span>
-                              )}
-                            </div>
+                        <div className="activity-row">
+                          <span className="activity-icon" style={{ color: 'var(--orange)' }}>💸</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <span className="activity-cost">
+                              {act.cost > 0 ? formatCost(act.cost, currency) : 'Free'}
+                            </span>
+                            {act.ticketStatus && (
+                              <span className={`ticket-badge ${statusClass(act.ticketStatus)}`}>
+                                {act.ticketStatus}
+                              </span>
+                            )}
                           </div>
-                        )}
+                        </div>
 
                         {act.details && (
                           <div className="activity-row">
@@ -576,7 +806,7 @@ export default function ItineraryDetail() {
           />
         )}
 
-        {/* Add Activities button (owner only) */}
+        {/* Add Activities button + AI import (owner only) */}
         {isOwner && !addingActivity && (
           <div className="add-activity-row">
             <button className="btn btn-primary" onClick={openAdd}>
@@ -584,6 +814,9 @@ export default function ItineraryDetail() {
               Add Activities
             </button>
           </div>
+        )}
+        {isOwner && !addingActivity && !editingId && (
+          <ActivityImport itineraryId={id} currency={currency} />
         )}
       </div>
     </>

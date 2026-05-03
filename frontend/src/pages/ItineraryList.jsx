@@ -80,8 +80,12 @@ export default function ItineraryList() {
 
   const headerRight = isAuthenticated ? (
     <Link to="/itinerary/new" className="btn-header">
-      <span className="btn-icon-circle">+</span>
-      Plan a New Itinerary
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="4" ry="4"/>
+        <line x1="12" y1="8" x2="12" y2="16"/>
+        <line x1="8" y1="12" x2="16" y2="12"/>
+      </svg>
+      <span className="btn-header-label">Plan a New Itinerary</span>
     </Link>
   ) : null
 
@@ -111,18 +115,19 @@ export default function ItineraryList() {
                 const cost = computeCost(it)
                 const canEdit = isOwner(it)
                 return (
-                  <div
+                  <Link
                     key={it.id}
+                    to={`/itinerary/${it.slug}`}
                     className="upcoming-card"
                     style={cardBgStyle(it)}
-                    onClick={() => navigate(`/itinerary/${it.id}`)}
                   >
                     {canEdit && (
                       <button
                         className="icon-btn upcoming-card-edit"
                         onClick={(e) => {
+                          e.preventDefault()
                           e.stopPropagation()
-                          navigate(`/itinerary/${it.id}/edit`)
+                          navigate(`/itinerary/${it.slug}/edit`)
                         }}
                         title="Edit itinerary"
                       >
@@ -147,7 +152,7 @@ export default function ItineraryList() {
                         </p>
                       )}
                     </div>
-                  </div>
+                  </Link>
                 )
               })}
             </div>
@@ -161,25 +166,26 @@ export default function ItineraryList() {
               {others.map((it) => {
                 const canEdit = isOwner(it)
                 return (
-                  <div
+                  <Link
                     key={it.id}
+                    to={`/itinerary/${it.slug}`}
                     className="other-list-item"
-                    onClick={() => navigate(`/itinerary/${it.id}`)}
                   >
                     <span className="other-list-item-name">{it.name}</span>
                     {canEdit && (
                       <button
                         className="icon-btn"
                         onClick={(e) => {
+                          e.preventDefault()
                           e.stopPropagation()
-                          navigate(`/itinerary/${it.id}/edit`)
+                          navigate(`/itinerary/${it.slug}/edit`)
                         }}
                         title="Edit itinerary"
                       >
                         <PencilIcon />
                       </button>
                     )}
-                  </div>
+                  </Link>
                 )
               })}
             </div>
