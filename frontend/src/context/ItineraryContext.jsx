@@ -96,16 +96,17 @@ export function ItineraryProvider({ children }) {
       method: 'PUT',
       body: JSON.stringify(updates),
     })
-    setItineraries((prev) => prev.map((it) => (it.id === id ? item : it)))
+    setItineraries((prev) => prev.map((it) => (it.id === item.id ? item : it)))
     setError('')
     return item
   }
 
   const deleteItinerary = async (id) => {
+    const existing = itineraries.find((it) => it.slug === id || it.id === id)
     await request(`/api/itineraries/${id}`, {
       method: 'DELETE',
     })
-    setItineraries((prev) => prev.filter((it) => it.id !== id))
+    setItineraries((prev) => prev.filter((it) => it.id !== existing?.id))
     setError('')
   }
 
@@ -137,6 +138,21 @@ export function ItineraryProvider({ children }) {
     setError('')
   }
 
+  const uploadImage = async (file) => {
+    const token = getToken()
+    const formData = new FormData()
+    formData.append('image', file)
+    const response = await fetch(`${API_BASE_URL}/api/upload/image`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    })
+    const text = await response.text()
+    const payload = parseResponsePayload(text)
+    if (!response.ok) throw new Error(payload?.error || 'Upload failed')
+    return payload.url
+  }
+
   const moveActivity = async (itineraryId, activityId, direction) => {
     await request(`/api/itineraries/${itineraryId}/activities/${activityId}/move`, {
       method: 'POST',
@@ -165,6 +181,7 @@ export function ItineraryProvider({ children }) {
         updateActivity,
         deleteActivity,
         moveActivity,
+        uploadImage,
       }}
     >
       {children}

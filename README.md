@@ -1,35 +1,54 @@
 # RE-ITINERARY
 
-RE-ITINERARY is a travel itinerary planner with a React frontend and a Go + SQLite backend. It helps organize trips, activities, dates, locations, and travel costs in a single timeline view.
+RE-ITINERARY is a travel itinerary planner with a React frontend and a PHP Slim + MySQL backend. It helps organize trips, activities, dates, locations, and travel costs in a single timeline view.
 
 ## Stack
 
 - Frontend: React + Vite
-- Backend: Go
-- Database: SQLite
+- Backend: PHP 8.2 + Slim 4
+- Database: MySQL (via XAMPP)
 - Maps: Leaflet + OpenStreetMap
 
 ## Project Structure
 
 - [frontend](./frontend): React application
-- [api](./api): Go API and SQLite integration
-- [api/db/re_itinerary.db](./api/db/re_itinerary.db): SQLite database
+- [api](./api): PHP Slim 4 API
 
 ## Quick Start
 
-### 1. Start the API
+### Prerequisites
+
+- XAMPP (Apache + MySQL + PHP 8.2)
+- Node.js >= 18 / npm >= 9
+- Composer
+
+### 1. Set up the API
 
 ```bash
 cd api
-go mod tidy
-go run .
+composer install
+cp .env.example .env
 ```
 
-API default URL:
+Create the database in MySQL:
 
 ```bash
-http://localhost:8080
+/Applications/XAMPP/bin/mysql -u root -e "CREATE DATABASE IF NOT EXISTS reitinerary CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 ```
+
+Run migrations and seed the default user:
+
+```bash
+/Applications/XAMPP/bin/php scripts/setup.php
+```
+
+Set `APP_BASE_PATH` in `api/.env` to match where Apache serves the API from, for example:
+
+```env
+APP_BASE_PATH=/re-itinerary/api/public
+```
+
+The API is served by Apache from the `public/` directory. Make sure XAMPP's `DocumentRoot` points to this project's parent directory and `AllowOverride All` is enabled.
 
 ### 2. Start the frontend
 
@@ -40,26 +59,16 @@ npm install
 npm run dev
 ```
 
-Frontend default URL:
+In `frontend/.env`, set the API base URL:
 
-```bash
+```env
+VITE_API_BASE_URL=http://localhost/re-itinerary/api/public
+```
+
+Frontend dev server URL:
+
+```
 http://localhost:5173
-```
-
-### 3. Configure the frontend API URL
-
-In `frontend/.env`:
-
-```bash
-VITE_API_BASE_URL=http://localhost:8080
-```
-
-### 4. (Optional) Configure the site URL for sitemap
-
-Set `SITE_URL` in the API environment to your production domain so the generated sitemap uses the correct URLs:
-
-```bash
-SITE_URL=https://yourdomain.com go run .
 ```
 
 ## Features
@@ -67,24 +76,22 @@ SITE_URL=https://yourdomain.com go run .
 - User registration and login (session-based auth)
 - Public and private itineraries — toggle per itinerary from the Edit page
 - Shareable itinerary links — readable without login
-- Create, edit, and delete itineraries
+- Create, edit, and delete itineraries with cover image upload
 - Add, edit, delete, and reorder activities
 - Group activities by day
 - Auto-derived itinerary end date from activities
 - Cost tracking per itinerary
 - Interactive maps for activity locations
-- LocalStorage import into SQLite
+- AI-assisted activity import via JSON prompt
 - SEO-friendly meta tags and OpenGraph tags on itinerary detail pages
 - Auto-generated `sitemap.xml` at `/sitemap.xml` listing all public itineraries
 
 ## Authentication
 
-Accounts are managed via `/api/auth/register` and `/api/auth/login`. Sessions are stored server-side in SQLite and validated via a Bearer token in the `Authorization` header. Tokens expire after 30 days.
+Accounts are managed via `/api/auth/register` and `/api/auth/login`. Sessions are stored server-side in MySQL and validated via a Bearer token in the `Authorization` header. Tokens expire after 30 days.
 
-A default demo account is created on first run using the `DEFAULT_USER_EMAIL` and `DEFAULT_USER_PASSWORD` environment variables (defaults: `demo@reitinerary.local` / `demo-password`).
+A default demo account is created during setup using the `DEFAULT_USER_EMAIL` and `DEFAULT_USER_PASSWORD` environment variables (defaults: `demo@reitinerary.local` / `demo-password`).
 
-## Existing Docs
+## Image Uploads
 
-- API documentation: [api/README.md](./api/README.md)
-- Frontend notes: [frontend/README.md](./frontend/README.md)
-- Environment requirements: [requirements.txt](./requirements.txt)
+Cover images are uploaded to `api/public/uploads/` and served directly by Apache. The upload endpoint is `POST /api/upload/image` (requires auth). Maximum file size is 5MB; supported formats are JPEG, PNG, WebP, and GIF.

@@ -282,13 +282,14 @@ const AI_SCHEMA_SAMPLE = JSON.stringify(
   2
 )
 
-function buildAiPrompt(currency) {
+function buildAiPrompt(currency, startDate) {
   return `Generate a list of trip activities in JSON format using this exact schema:
 
 ${AI_SCHEMA_SAMPLE}
 
 Rules:
 - "datetime" format: YYYY-MM-DDTHH:MM
+- Trip starts on ${startDate} — use this as the base date for all activities
 - "type" must be one of: Attraction, Beach, Bus, Car, Culinary, Culture, Cycling, Event, Explore, Ferry, Flight, Hiking, Motorscooter, Nature, Other, Shopping, Spa, Sport, Stay, Taxi, Train
 - "ticketStatus" must be one of: "Secured", "Unbooked", "Go Show", or "" (empty string)
 - "cost" is a number in ${currency}, use 0 if free
@@ -296,7 +297,7 @@ Rules:
 - Return ONLY a valid JSON array, no extra text`
 }
 
-function ActivityImport({ itineraryId, currency }) {
+function ActivityImport({ itineraryId, currency, startDate }) {
   const { addActivity } = useItinerary()
   const [open, setOpen] = useState(false)
   const [json, setJson] = useState('')
@@ -323,7 +324,7 @@ function ActivityImport({ itineraryId, currency }) {
   }
 
   const handleCopyPrompt = async () => {
-    await navigator.clipboard.writeText(buildAiPrompt(currency))
+    await navigator.clipboard.writeText(buildAiPrompt(currency, startDate))
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -816,7 +817,7 @@ export default function ItineraryDetail() {
           </div>
         )}
         {isOwner && !addingActivity && !editingId && (
-          <ActivityImport itineraryId={id} currency={currency} />
+          <ActivityImport itineraryId={id} currency={currency} startDate={itinerary.startDate} />
         )}
       </div>
     </>

@@ -13,7 +13,7 @@ function todayStr() {
 export default function EditItinerary() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { getItinerary, addItinerary, updateItinerary, deleteItinerary, loading, error } = useItinerary()
+  const { getItinerary, addItinerary, updateItinerary, deleteItinerary, uploadImage, loading, error } = useItinerary()
   const isNew = !id || id === 'new'
   const existing = isNew ? null : getItinerary(id)
 
@@ -42,12 +42,18 @@ export default function EditItinerary() {
   const fileRef = useRef()
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }))
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => set('image', ev.target.result)
-    reader.readAsDataURL(file)
+    setSaving(true)
+    try {
+      const url = await uploadImage(file)
+      set('image', url)
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleSave = async () => {
