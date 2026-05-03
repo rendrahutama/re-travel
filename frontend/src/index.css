@@ -34,8 +34,8 @@ body {
 
 /* ─── Header ─── */
 .header {
-  background: var(--teal-dark);
-  color: white;
+  background: white;
+  color: var(--teal-dark);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -50,7 +50,7 @@ body {
   font-family: 'Pacifico', cursive;
   font-size: 18px;
   letter-spacing: 0.5px;
-  color: white;
+  color: var(--teal-dark);
   text-decoration: none;
 }
 
@@ -63,7 +63,7 @@ body {
 }
 
 .header-link {
-  color: white;
+  color: var(--teal-dark);
   text-decoration: none;
   font-weight: 500;
 }
@@ -72,8 +72,8 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255,255,255,0.15);
-  border: 1.5px solid rgba(255,255,255,0.4);
+  background: var(--teal-dark);
+  border: 1.5px solid white;
   color: white;
   padding: 6px 16px;
   border-radius: 20px;
@@ -85,7 +85,7 @@ body {
 }
 
 .btn-header:hover {
-  background: rgba(255,255,255,0.25);
+  background: var(--teal);
 }
 
 .btn-header-label {
@@ -180,6 +180,7 @@ body {
   font-weight: 700;
   font-style: italic;
   margin-bottom: 16px;
+  color: var(--teal-dark);
 }
 
 /* ─── Itinerary List page ─── */
@@ -1164,7 +1165,7 @@ body {
   gap: 7px;
   background: rgba(255,255,255,0.12);
   border: 1px solid rgba(255,255,255,0.28);
-  color: white;
+  color: var(--teal-dark);
   font-size: 13px;
   font-weight: 500;
   padding: 5px 12px;
@@ -1197,17 +1198,18 @@ body {
   margin-bottom: 8px;
   border-bottom: 1px solid var(--border);
   word-break: break-all;
+  text-align: right;
 }
 
 .user-menu-nav-link {
   display: block;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-dark);
+  font-size: 12px;
+  color: var(--dark-teal);
   text-decoration: none;
   padding: 2px 0 8px;
   margin-bottom: 4px;
   border-bottom: 1px solid var(--border);
+  text-align: right;
 }
 
 .user-menu-nav-link:hover {
@@ -1219,11 +1221,11 @@ body {
   text-align: left;
   background: none;
   border: none;
-  color: var(--red-btn);
-  font-size: 13px;
-  font-weight: 600;
+  color: var(--dark-teal);
+  font-size: 12px;
   cursor: pointer;
   padding: 2px 0;
+  text-align: right;
 }
 
 .user-menu-logout:hover {

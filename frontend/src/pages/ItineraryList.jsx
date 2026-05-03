@@ -35,7 +35,7 @@ function computeCost(itinerary) {
 function cardBgStyle(it) {
   if (it.image) {
     return {
-      backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.70) 0%, rgba(0,0,0,0.10) 55%, transparent 100%), url(${it.image})`,
+      backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.10) 55%, transparent 100%), linear-gradient(rgba(30,110,100,0.45), rgba(30,110,100,0.45)), url(${it.image})`,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
     }
