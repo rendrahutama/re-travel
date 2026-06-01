@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace App\Middleware;
 
-use PDO;
+use App\Db\SsoPdo;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\MiddlewareInterface;
@@ -12,7 +12,7 @@ use Slim\Psr7\Factory\ResponseFactory;
 
 class AuthMiddleware implements MiddlewareInterface
 {
-    public function __construct(private readonly PDO $pdo) {}
+    public function __construct(private readonly SsoPdo $pdo) {}
 
     public function process(Request $request, Handler $handler): Response
     {
@@ -30,6 +30,13 @@ class AuthMiddleware implements MiddlewareInterface
 
     private function extractToken(Request $request): string
     {
+        // Cookie is the primary SSO mechanism
+        $cookies = $request->getCookieParams();
+        if (!empty($cookies['auth_token'])) {
+            return $cookies['auth_token'];
+        }
+
+        // Fallback: Authorization header for local dev / API clients
         $auth = $request->getHeaderLine('Authorization');
         return str_starts_with($auth, 'Bearer ') ? substr($auth, 7) : '';
     }

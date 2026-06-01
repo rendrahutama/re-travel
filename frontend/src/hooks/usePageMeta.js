@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 
-const APP_NAME = 'Re-Itinerary'
+const APP_NAME = 'Re-Travel'
 
 function setMetaTag(selector, attrName, attrValue, content) {
   if (!content) return

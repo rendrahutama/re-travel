@@ -4,15 +4,15 @@ set -e
 SSH="ssh -p 2223 renr4736@rendrahutama.my.id"
 SCP="scp -P 2223"
 
-echo "🚀 Re-Itinerary Frontend Deploy"
+echo "🚀 Re-Travel Frontend Deploy"
 echo "================================"
-echo "1) Build for LOCAL  (http://localhost/re-itinerary/api/public)"
+echo "1) Build for LOCAL  (http://localhost/re-travel/api/public)"
 echo "2) Build for PROD   (https://travel.rendrahutama.my.id)"
 echo ""
 read -p "Choose [1/2]: " choice
 
 if [ "$choice" = "1" ]; then
-    API_URL="http://localhost/re-itinerary/api/public"
+    API_URL="http://localhost/re-travel/api/public"
     SITE_URL="http://localhost:5173"
     echo "🏠 Building for LOCAL..."
 elif [ "$choice" = "2" ]; then

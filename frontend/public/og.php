@@ -22,7 +22,7 @@ $env = loadEnv(__DIR__ . '/.env');
 
 define('API_BASE_URL', rtrim($env['VITE_API_BASE_URL'] ?? 'http://localhost:8080', '/'));
 define('SITE_URL',     rtrim($env['VITE_SITE_URL']     ?? 'http://localhost:5173', '/'));
-define('APP_NAME',     'Re-Itinerary');
+define('APP_NAME',     'Re-Travel');
 
 function fetchItinerary(string $slug): ?array
 {
@@ -84,7 +84,7 @@ function renderFallback(): void
 {
     renderOg(
         APP_NAME . ' | Travel Itinerary Planner',
-        'Plan trips, organize activities, track locations, and manage travel schedules with RE-ITINERARY.',
+        'Plan trips, organize activities, track locations, and manage travel schedules with RE-TRAVEL.',
         null,
         SITE_URL
     );

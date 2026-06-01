@@ -59,7 +59,7 @@ export default function ItineraryList() {
 
   usePageMeta({
     title: isAuthenticated ? 'My Itineraries' : 'Explore Itineraries',
-    description: 'Plan and manage all your travel itineraries in one place with Re-Itinerary.',
+    description: 'Plan and manage all your travel itineraries in one place with Re-Travel.',
   })
 
   const today = new Date()

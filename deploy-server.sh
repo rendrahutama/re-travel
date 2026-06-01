@@ -1,20 +1,20 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Re-Itinerary Deployment Script"
+echo "🚀 Re-Travel Deployment Script"
 echo "=================================="
 
 # Config
 PHP=/opt/alt/php84/usr/bin/php
-REPO="https://github.com/rendrahutama/re-itinerary.git"
+REPO="https://github.com/rendrahutama/re-travel.git"
 PUBLIC_HTML=~/public_html
-API_DIR=$PUBLIC_HTML/re-itinerary/api
+API_DIR=$PUBLIC_HTML/re-travel/api
 TRAVEL_DIR=$PUBLIC_HTML/travel
 
 # Step 1 — Pull latest code
 echo "📦 Pulling latest code..."
-if [ -d "$PUBLIC_HTML/re-itinerary" ]; then
-    cd $PUBLIC_HTML/re-itinerary
+if [ -d "$PUBLIC_HTML/re-travel" ]; then
+    cd $PUBLIC_HTML/re-travel
     git pull
 else
     cd $PUBLIC_HTML
@@ -56,7 +56,7 @@ if [ ! -f "$TRAVEL_DIR/api/index.php" ]; then
 <?php
 $_SERVER['SCRIPT_NAME'] = '/index.php';
 $_SERVER['PHP_SELF'] = '/index.php';
-require '/home/renr4736/public_html/re-itinerary/api/public/index.php';
+require '/home/renr4736/public_html/re-travel/api/public/index.php';
 EOF
     echo "   Proxy created!"
 else

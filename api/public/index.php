@@ -17,7 +17,7 @@ $container = new Container();
 $container->set(PDO::class, function (): PDO {
     $host = $_ENV['DB_HOST'] ?? 'localhost';
     $port = $_ENV['DB_PORT'] ?? '3306';
-    $name = $_ENV['DB_NAME'] ?? 'reitinerary';
+    $name = $_ENV['DB_NAME'] ?? 'retravel';
     $user = $_ENV['DB_USER'] ?? 'root';
     $pass = $_ENV['DB_PASS'] ?? '';
 
@@ -26,6 +26,21 @@ $container->set(PDO::class, function (): PDO {
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES   => false,
+    ]);
+});
+
+$container->set(\App\Db\SsoPdo::class, function (): \App\Db\SsoPdo {
+    $host = $_ENV['SSO_DB_HOST'] ?? $_ENV['DB_HOST'] ?? 'localhost';
+    $port = $_ENV['SSO_DB_PORT'] ?? $_ENV['DB_PORT'] ?? '3306';
+    $name = $_ENV['SSO_DB_NAME'] ?? 'relogin';
+    $user = $_ENV['SSO_DB_USER'] ?? $_ENV['DB_USER'] ?? 'root';
+    $pass = $_ENV['SSO_DB_PASS'] ?? $_ENV['DB_PASS'] ?? '';
+
+    $dsn = "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4";
+    return new \App\Db\SsoPdo($dsn, $user, $pass, [
+        \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
+        \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+        \PDO::ATTR_EMULATE_PREPARES   => false,
     ]);
 });
 

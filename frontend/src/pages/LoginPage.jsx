@@ -33,7 +33,7 @@ export default function LoginPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <Link to="/" className="auth-logo"><i>Re-Itinerary</i></Link>
+        <Link to="/" className="auth-logo"><i>Re-Travel</i></Link>
         <h2 className="auth-title">Sign in to your account</h2>
 
         {error && <p className="auth-error">{error}</p>}

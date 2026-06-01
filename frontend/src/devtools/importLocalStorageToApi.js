@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'reitinerary_data'
+const STORAGE_KEY = 'retravel_data'
 const DEFAULT_API_BASE_URL = 'http://localhost:8080'
 
 export function installLocalStorageImportBridge() {

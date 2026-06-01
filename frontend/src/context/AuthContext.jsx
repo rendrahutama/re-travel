@@ -1,11 +1,15 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 
 const AuthContext = createContext()
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '')
 
-async function authRequest(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+const API_BASE    = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+const LOGIN_URL   = import.meta.env.VITE_LOGIN_URL || 'http://localhost:5175'
+const SITE_URL    = import.meta.env.VITE_SITE_URL  || 'http://localhost:5173'
+
+async function apiRequest(path, options = {}) {
+  const response = await fetch(`${API_BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    credentials: 'include',
     ...options,
   })
   const text = await response.text()
@@ -15,68 +19,32 @@ async function authRequest(path, options = {}) {
   return payload
 }
 
+export function redirectToLogin() {
+  const redirect = encodeURIComponent(window.location.href || SITE_URL)
+  window.location.href = `${LOGIN_URL}/login?redirect=${redirect}`
+}
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
+  const [user, setUser]       = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token')
-    if (!token) {
-      setLoading(false)
-      return
-    }
-    authRequest('/api/auth/me', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiRequest('/api/auth/me')
       .then(setUser)
-      .catch(() => {
-        localStorage.removeItem('auth_token')
-      })
+      .catch(() => setUser(null))
       .finally(() => setLoading(false))
   }, [])
 
-  const login = async (email, password) => {
-    const data = await authRequest('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    })
-    localStorage.setItem('auth_token', data.token)
-    setUser(data.user)
-    return data
-  }
-
   const logout = async () => {
-    const token = localStorage.getItem('auth_token')
-    if (token) {
-      try {
-        await authRequest('/api/auth/logout', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-        })
-      } catch { /* ignore */ }
-    }
-    localStorage.removeItem('auth_token')
+    try {
+      await apiRequest('/api/auth/logout', { method: 'POST' })
+    } catch { /* ignore */ }
     setUser(null)
-  }
-
-  const register = async (name, email, password) => {
-    return authRequest('/api/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ name, email, password }),
-    })
+    redirectToLogin()
   }
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        isAuthenticated: !!user,
-        login,
-        logout,
-        register,
-      }}
-    >
+    <AuthContext.Provider value={{ user, loading, isAuthenticated: !!user, logout }}>
       {children}
     </AuthContext.Provider>
   )

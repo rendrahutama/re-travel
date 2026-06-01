@@ -19,10 +19,8 @@ $app->get('/health', function ($request, $response) {
 $app->get('/sitemap.xml', [SitemapController::class, 'index']);
 
 $app->group('/api', function (RouteCollectorProxy $group) {
-    $group->post('/auth/register', [AuthController::class, 'register']);
-    $group->post('/auth/login',    [AuthController::class, 'login']);
-    $group->post('/auth/logout',   [AuthController::class, 'logout']);
-    $group->get('/auth/me',        [AuthController::class, 'me'])->add(AuthMiddleware::class);
+    $group->post('/auth/logout', [AuthController::class, 'logout']);
+    $group->get('/auth/me',     [AuthController::class, 'me'])->add(AuthMiddleware::class);
 
     $group->post('/upload/image', [UploadController::class, 'image'])->add(AuthMiddleware::class);
 

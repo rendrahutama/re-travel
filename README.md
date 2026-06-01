@@ -1,6 +1,6 @@
-# RE-ITINERARY
+# RE-TRAVEL
 
-RE-ITINERARY is a travel itinerary planner with a React frontend and a PHP Slim + MySQL backend. It helps organize trips, activities, dates, locations, and travel costs in a single timeline view.
+RE-TRAVEL is a travel itinerary planner with a React frontend and a PHP Slim + MySQL backend. It helps organize trips, activities, dates, locations, and travel costs in a single timeline view.
 
 ## Stack
 
@@ -33,7 +33,7 @@ cp .env.example .env
 Create the database in MySQL:
 
 ```bash
-/Applications/XAMPP/bin/mysql -u root -e "CREATE DATABASE IF NOT EXISTS reitinerary CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+/Applications/XAMPP/bin/mysql -u root -e "CREATE DATABASE IF NOT EXISTS retravel CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 ```
 
 Run migrations and seed the default user:
@@ -45,7 +45,7 @@ Run migrations and seed the default user:
 Set `APP_BASE_PATH` in `api/.env` to match where Apache serves the API from, for example:
 
 ```env
-APP_BASE_PATH=/re-itinerary/api/public
+APP_BASE_PATH=/re-travel/api/public
 ```
 
 The API is served by Apache from the `public/` directory. Make sure XAMPP's `DocumentRoot` points to this project's parent directory and `AllowOverride All` is enabled.
@@ -62,7 +62,7 @@ npm run dev
 In `frontend/.env`, set the API base URL:
 
 ```env
-VITE_API_BASE_URL=http://localhost/re-itinerary/api/public
+VITE_API_BASE_URL=http://localhost/re-travel/api/public
 ```
 
 Frontend dev server URL:
@@ -90,7 +90,7 @@ http://localhost:5173
 
 Accounts are managed via `/api/auth/register` and `/api/auth/login`. Sessions are stored server-side in MySQL and validated via a Bearer token in the `Authorization` header. Tokens expire after 30 days.
 
-A default demo account is created during setup using the `DEFAULT_USER_EMAIL` and `DEFAULT_USER_PASSWORD` environment variables (defaults: `demo@reitinerary.local` / `demo-password`).
+A default demo account is created during setup using the `DEFAULT_USER_EMAIL` and `DEFAULT_USER_PASSWORD` environment variables (defaults: `demo@retravel.local` / `demo-password`).
 
 ## Image Uploads
 

@@ -8,7 +8,7 @@ $dotenv->safeLoad();
 
 $host = $_ENV['DB_HOST'] ?? 'localhost';
 $port = $_ENV['DB_PORT'] ?? '3306';
-$name = $_ENV['DB_NAME'] ?? 'reitinerary';
+$name = $_ENV['DB_NAME'] ?? 'retravel';
 $user = $_ENV['DB_USER'] ?? 'root';
 $pass = $_ENV['DB_PASS'] ?? '';
 
@@ -42,7 +42,7 @@ foreach (explode(';', $sql) as $statement) {
 echo "Schema applied.\n";
 
 $defaultName  = $_ENV['DEFAULT_USER_NAME']     ?? 'Demo User';
-$defaultEmail = $_ENV['DEFAULT_USER_EMAIL']    ?? 'demo@reitinerary.local';
+$defaultEmail = $_ENV['DEFAULT_USER_EMAIL']    ?? 'demo@retravel.local';
 $defaultPass  = $_ENV['DEFAULT_USER_PASSWORD'] ?? 'demo-password';
 
 $hash = password_hash($defaultPass, PASSWORD_BCRYPT);
