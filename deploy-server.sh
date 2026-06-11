@@ -1,87 +1,54 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Re-Travel Deployment Script"
+SSH="ssh rumahweb"
+SCP="scp -P 2223"
+PHP=/opt/alt/php84/usr/bin/php
+COMPOSER=/home/renr4736/bin/composer
+API_DIR=/home/renr4736/public_html/re-travel/api
+TRAVEL_DIR=/home/renr4736/public_html/travel
+
+echo "Re-Travel API Deploy"
 echo "=================================="
 
-# Config
-PHP=/opt/alt/php84/usr/bin/php
-REPO="https://github.com/rendrahutama/re-travel.git"
-PUBLIC_HTML=~/public_html
-API_DIR=$PUBLIC_HTML/re-travel/api
-TRAVEL_DIR=$PUBLIC_HTML/travel
+# Step 1 — Pack and upload API (excluding vendor)
+echo "Packing API..."
+cd "$(dirname "$0")"
+tar --exclude='api/vendor' --exclude='api/.env' --exclude='api/public/uploads' --exclude='.git' -czf /tmp/re-travel-api.tar.gz api/
+echo "Uploading..."
+$SCP /tmp/re-travel-api.tar.gz renr4736@rendrahutama.my.id:~/
 
-# Step 1 — Pull latest code
-echo "📦 Pulling latest code..."
-if [ -d "$PUBLIC_HTML/re-travel" ]; then
-    cd $PUBLIC_HTML/re-travel
-    git pull
-else
-    cd $PUBLIC_HTML
-    git clone $REPO
-fi
-
-# Step 2 — Restore .env (never in git)
-echo "⚙️  Checking .env..."
-if [ ! -f "$API_DIR/.env" ]; then
-    echo "❌ .env not found! Create it manually:"
-    echo "   nano $API_DIR/.env"
-    exit 1
-fi
-
-# Step 3 — Run migrations
-echo "🗄️  Running migrations..."
+# Step 2 — Extract, install deps, run migrations on server
+echo "Deploying on server..."
+$SSH "
+set -e
+mkdir -p $API_DIR
+cd /home/renr4736/public_html/re-travel
+tar --warning=no-unknown-keyword -xzf ~/re-travel-api.tar.gz
 cd $API_DIR
+$PHP $COMPOSER install --no-dev --optimize-autoloader
 $PHP scripts/setup.php
 
-# Step 4 — Fix permissions
-echo "🔒 Fixing permissions..."
-chmod 755 $API_DIR/public/uploads 2>/dev/null || mkdir -p $API_DIR/public/uploads && chmod 755 $API_DIR/public/uploads
-chmod 644 $API_DIR/public/uploads/* 2>/dev/null || true
+# Fix uploads dir permissions
+mkdir -p $API_DIR/public/uploads
+chmod 755 $API_DIR/public/uploads
 
-# Step 5 — Ensure uploads symlink exists
-echo "🔗 Checking uploads symlink..."
-if [ ! -L "$TRAVEL_DIR/uploads" ]; then
+# Ensure uploads symlink exists
+if [ ! -L '$TRAVEL_DIR/uploads' ]; then
     ln -s $API_DIR/public/uploads $TRAVEL_DIR/uploads
-    echo "   Symlink created!"
-else
-    echo "   Symlink OK!"
+    echo 'uploads symlink created'
 fi
 
-# Step 6 — Ensure API proxy exists
-echo "🔀 Checking API proxy..."
-if [ ! -f "$TRAVEL_DIR/api/index.php" ]; then
-    mkdir -p $TRAVEL_DIR/api
-    cat > $TRAVEL_DIR/api/index.php << 'EOF'
+# Ensure API proxy is pointing to re-travel
+cat > $TRAVEL_DIR/api/index.php << 'EOF'
 <?php
-$_SERVER['SCRIPT_NAME'] = '/index.php';
-$_SERVER['PHP_SELF'] = '/index.php';
+\$_SERVER['SCRIPT_NAME'] = '/index.php';
+\$_SERVER['PHP_SELF'] = '/index.php';
 require '/home/renr4736/public_html/re-travel/api/public/index.php';
 EOF
-    echo "   Proxy created!"
-else
-    echo "   Proxy OK!"
-fi
 
-# Step 7 — Ensure .htaccess exists
-echo "📝 Checking .htaccess..."
-if [ ! -f "$TRAVEL_DIR/.htaccess" ]; then
-    cat > $TRAVEL_DIR/.htaccess << 'EOF'
-RewriteEngine On
-
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^api/(.*)$ api/index.php [QSA,L]
-
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ index.html [QSA,L]
-EOF
-    echo "   .htaccess created!"
-else
-    echo "   .htaccess OK!"
-fi
+echo 'Server setup complete!'
+"
 
 echo ""
-echo "✅ Deployment complete!"
-echo "🌐 https://travel.rendrahutama.my.id"
+echo "Done! https://travel.rendrahutama.my.id"

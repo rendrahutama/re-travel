@@ -21,8 +21,8 @@ class UploadController extends BaseController
 
     public function image(Request $request, Response $response): Response
     {
-        $userId = $request->getAttribute('userId');
-        if ($userId === null) {
+        $userEmail = $request->getAttribute('userEmail');
+        if ($userEmail === null) {
             throw new HttpException('unauthorized', 401);
         }
 

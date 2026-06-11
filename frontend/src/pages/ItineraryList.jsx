@@ -73,7 +73,7 @@ export default function ItineraryList() {
     .filter((it) => new Date(it.startDate) < today)
     .sort((a, b) => new Date(b.startDate) - new Date(a.startDate))
 
-  const isOwner = (it) => isAuthenticated && user && String(it.ownerId) === String(user.id)
+  const isOwner = (it) => isAuthenticated && user && it.ownerEmail === user.email
 
   const upcomingLabel = isAuthenticated ? 'Your Itineraries Ahead' : 'Upcoming Trips'
   const othersLabel = isAuthenticated ? 'Other Itineraries' : 'Past Trips'

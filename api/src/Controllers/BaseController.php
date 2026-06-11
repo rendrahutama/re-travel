@@ -49,13 +49,12 @@ abstract class BaseController
     protected function getItinerary(int $id): array
     {
         $stmt = $this->pdo->prepare('
-            SELECT i.id, i.user_id, i.name,
+            SELECT i.id, i.user_email, i.name,
                    COALESCE(i.description, \'\') AS description,
                    i.start_date, i.end_date,
                    COALESCE(i.currency, \'IDR\') AS currency,
                    COALESCE(i.estimated_cost, 0) AS estimated_cost,
                    i.cover_image_url, i.created_at, i.is_public,
-                   COALESCE((SELECT name FROM users WHERE id = i.user_id), \'Unknown\') AS owner_name,
                    COALESCE(i.slug, \'\') AS slug
             FROM itineraries i
             WHERE i.id = ?
@@ -69,8 +68,7 @@ abstract class BaseController
 
         return [
             'id'            => (string) $row['id'],
-            'ownerId'       => (int) $row['user_id'],
-            'ownerName'     => $row['owner_name'],
+            'ownerEmail'    => $row['user_email'],
             'slug'          => $row['slug'],
             'name'          => $row['name'],
             'description'   => $row['description'],
@@ -177,16 +175,16 @@ abstract class BaseController
         ')->execute([$itineraryId]);
     }
 
-    protected function checkOwnership(int $itineraryId, int $userId): void
+    protected function checkOwnership(int $itineraryId, string $userEmail): void
     {
-        $stmt = $this->pdo->prepare('SELECT user_id FROM itineraries WHERE id = ?');
+        $stmt = $this->pdo->prepare('SELECT user_email FROM itineraries WHERE id = ?');
         $stmt->execute([$itineraryId]);
         $row = $stmt->fetch();
 
         if (!$row) {
             throw new NotFoundException('itinerary');
         }
-        if ((int) $row['user_id'] !== $userId) {
+        if ($row['user_email'] !== $userEmail) {
             throw new ForbiddenException();
         }
     }

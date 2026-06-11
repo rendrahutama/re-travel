@@ -514,7 +514,7 @@ export default function ItineraryDetail() {
     }
   }, [id, itinerary, loading])
 
-  const isOwner = !!(user && itinerary && String(itinerary.ownerId) === String(user.id))
+  const isOwner = !!(user && itinerary && itinerary.ownerEmail === user.email)
 
   usePageMeta({
     title: itinerary?.name,
@@ -663,10 +663,10 @@ export default function ItineraryDetail() {
                     <span className="trip-meta-value">{formatEstimate(totalCost, currency)}</span>
                   </div>
                 )}
-                {itinerary.ownerName && (
+                {itinerary.ownerEmail && (
                   <div className="trip-meta-item">
                     <span className="trip-meta-label">Created by</span>
-                    <span className="trip-meta-value">{itinerary.ownerName}</span>
+                    <span className="trip-meta-value">{itinerary.ownerEmail}</span>
                   </div>
                 )}
               </div>

@@ -14,10 +14,10 @@ class AuthController
 
     public function me(Request $request, Response $response): Response
     {
-        $userId = (int) $request->getAttribute('userId');
+        $userEmail = (string) $request->getAttribute('userEmail');
 
-        $stmt = $this->pdo->prepare('SELECT id, name, email FROM users WHERE id = ?');
-        $stmt->execute([$userId]);
+        $stmt = $this->pdo->prepare('SELECT name, email FROM users WHERE email = ?');
+        $stmt->execute([$userEmail]);
         $user = $stmt->fetch();
 
         if (!$user) {
@@ -25,7 +25,6 @@ class AuthController
         }
 
         $response->getBody()->write(json_encode([
-            'id'    => (int) $user['id'],
             'name'  => $user['name'],
             'email' => $user['email'],
         ]));

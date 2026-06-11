@@ -18,12 +18,17 @@ class OptionalAuthMiddleware implements MiddlewareInterface
         $token = $this->extractToken($request);
 
         if ($token !== '') {
-            $stmt = $this->pdo->prepare('SELECT user_id, expires_at FROM sessions WHERE token = ?');
+            $stmt = $this->pdo->prepare('
+                SELECT u.email, s.expires_at
+                FROM sessions s
+                JOIN users u ON u.id = s.user_id
+                WHERE s.token = ?
+            ');
             $stmt->execute([$token]);
             $row = $stmt->fetch();
 
             if ($row && new \DateTime() <= new \DateTime($row['expires_at'])) {
-                $request = $request->withAttribute('userId', (int) $row['user_id']);
+                $request = $request->withAttribute('userEmail', $row['email']);
             }
         }
 

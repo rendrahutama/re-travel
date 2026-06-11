@@ -16,16 +16,16 @@ class AuthMiddleware implements MiddlewareInterface
 
     public function process(Request $request, Handler $handler): Response
     {
-        $token  = $this->extractToken($request);
-        $userId = $this->validateSession($token);
+        $token     = $this->extractToken($request);
+        $userEmail = $this->validateSession($token);
 
-        if ($userId === null) {
+        if ($userEmail === null) {
             $response = (new ResponseFactory())->createResponse(401);
             $response->getBody()->write(json_encode(['error' => 'unauthorized']));
             return $response->withHeader('Content-Type', 'application/json');
         }
 
-        return $handler->handle($request->withAttribute('userId', $userId));
+        return $handler->handle($request->withAttribute('userEmail', $userEmail));
     }
 
     private function extractToken(Request $request): string
@@ -41,13 +41,18 @@ class AuthMiddleware implements MiddlewareInterface
         return str_starts_with($auth, 'Bearer ') ? substr($auth, 7) : '';
     }
 
-    private function validateSession(string $token): ?int
+    private function validateSession(string $token): ?string
     {
         if ($token === '') {
             return null;
         }
 
-        $stmt = $this->pdo->prepare('SELECT user_id, expires_at FROM sessions WHERE token = ?');
+        $stmt = $this->pdo->prepare('
+            SELECT u.email, s.expires_at
+            FROM sessions s
+            JOIN users u ON u.id = s.user_id
+            WHERE s.token = ?
+        ');
         $stmt->execute([$token]);
         $row = $stmt->fetch();
 
@@ -55,6 +60,6 @@ class AuthMiddleware implements MiddlewareInterface
             return null;
         }
 
-        return (int) $row['user_id'];
+        return $row['email'];
     }
 }

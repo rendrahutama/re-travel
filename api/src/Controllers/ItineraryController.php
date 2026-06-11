@@ -13,15 +13,15 @@ class ItineraryController extends BaseController
 {
     public function index(Request $request, Response $response): Response
     {
-        $userId = $request->getAttribute('userId');
+        $userEmail = $request->getAttribute('userEmail');
 
-        if ($userId !== null) {
+        if ($userEmail !== null) {
             $stmt = $this->pdo->prepare('
                 SELECT id FROM itineraries
-                WHERE user_id = ?
+                WHERE user_email = ?
                 ORDER BY start_date ASC, id ASC
             ');
-            $stmt->execute([(int) $userId]);
+            $stmt->execute([$userEmail]);
         } else {
             $stmt = $this->pdo->query('
                 SELECT id FROM itineraries
@@ -40,8 +40,8 @@ class ItineraryController extends BaseController
 
     public function create(Request $request, Response $response): Response
     {
-        $userId = $request->getAttribute('userId');
-        if ($userId === null) {
+        $userEmail = $request->getAttribute('userEmail');
+        if ($userEmail === null) {
             throw new HttpException('unauthorized', 401);
         }
 
@@ -53,11 +53,11 @@ class ItineraryController extends BaseController
 
         $stmt = $this->pdo->prepare('
             INSERT INTO itineraries
-                (user_id, name, description, start_date, end_date, currency, cover_image_url, estimated_cost, is_public, slug)
+                (user_email, name, description, start_date, end_date, currency, cover_image_url, estimated_cost, is_public, slug)
             VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
         ');
         $stmt->execute([
-            (int) $userId,
+            $userEmail,
             $payload['name'],
             $payload['description'],
             $payload['startDate'],
@@ -76,9 +76,9 @@ class ItineraryController extends BaseController
     {
         $id     = $this->resolveItineraryId($args['id']);
         $item   = $this->getItinerary($id);
-        $userId = $request->getAttribute('userId');
+        $userEmail = $request->getAttribute('userEmail');
 
-        if (!$item['isPublic'] && ($userId === null || $item['ownerId'] !== (int) $userId)) {
+        if (!$item['isPublic'] && ($userEmail === null || $item['ownerEmail'] !== $userEmail)) {
             throw new ForbiddenException();
         }
 
@@ -87,13 +87,13 @@ class ItineraryController extends BaseController
 
     public function update(Request $request, Response $response, array $args): Response
     {
-        $userId = $request->getAttribute('userId');
-        if ($userId === null) {
+        $userEmail = $request->getAttribute('userEmail');
+        if ($userEmail === null) {
             throw new HttpException('unauthorized', 401);
         }
 
         $id = $this->resolveItineraryId($args['id']);
-        $this->checkOwnership($id, (int) $userId);
+        $this->checkOwnership($id, $userEmail);
 
         $current = $this->getItinerary($id);
         $body    = $this->getBody($request);
@@ -126,13 +126,13 @@ class ItineraryController extends BaseController
 
     public function destroy(Request $request, Response $response, array $args): Response
     {
-        $userId = $request->getAttribute('userId');
-        if ($userId === null) {
+        $userEmail = $request->getAttribute('userEmail');
+        if ($userEmail === null) {
             throw new HttpException('unauthorized', 401);
         }
 
         $id = $this->resolveItineraryId($args['id']);
-        $this->checkOwnership($id, (int) $userId);
+        $this->checkOwnership($id, $userEmail);
 
         $row = $this->pdo->prepare('SELECT cover_image_url FROM itineraries WHERE id = ?');
         $row->execute([$id]);

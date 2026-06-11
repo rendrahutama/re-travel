@@ -11,7 +11,7 @@ class ImportController extends BaseController
 {
     public function fromLocalStorage(Request $request, Response $response): Response
     {
-        $userId = (int) $request->getAttribute('userId');
+        $userEmail = (string) $request->getAttribute('userEmail');
         $parsed = $request->getParsedBody();
 
         if (empty($parsed)) {
@@ -33,7 +33,7 @@ class ImportController extends BaseController
         $this->pdo->beginTransaction();
         try {
             if ($replaceExisting) {
-                $this->pdo->prepare('DELETE FROM itineraries WHERE user_id = ?')->execute([$userId]);
+                $this->pdo->prepare('DELETE FROM itineraries WHERE user_email = ?')->execute([$userEmail]);
             }
 
             $importedIds = [];
@@ -66,12 +66,12 @@ class ImportController extends BaseController
 
                 $stmt = $this->pdo->prepare('
                     INSERT INTO itineraries
-                        (user_id, name, description, start_date, end_date, currency,
+                        (user_email, name, description, start_date, end_date, currency,
                          cover_image_url, estimated_cost, is_public, slug, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
                 ');
                 $stmt->execute([
-                    $userId,
+                    $userEmail,
                     $payload['name'],
                     $payload['description'],
                     $payload['startDate'],
